@@ -4,7 +4,7 @@ import express from "express";
 import * as http from "http";
 import type { Logger } from "pino";
 import * as uuid from "uuid";
-import { CognitoError, UnsupportedError } from "../errors";
+import { CognitoError, UnsupportedError, NotAuthorizedError } from "../errors";
 import { Router } from "./Router";
 import PublicKey from "../keys/cognitoLocal.public.json";
 import Pino from "pino-http";
@@ -67,15 +67,20 @@ export const createServer = (
       route({ logger: req.log }, rawBody).then(
         (output) => res.status(200).type("json").send(JSON.stringify(output)),
         (ex) => {
-          if (ex instanceof CognitoError) {
-            req.log.warn(ex, `Error handling target: ${target}`);
+          req.log.warn(ex, `Error handling target: ${target}`);
+          if (ex instanceof NotAuthorizedError) {
+            res.status(401).json({
+              code: ex.code,
+              message: ex.message,
+            });
+            return;
+          } else if (ex instanceof CognitoError) {
             res.status(400).json({
               code: ex.code,
               message: ex.message,
             });
             return;
           } else {
-            req.log.error(ex, `Error handling target: ${target}`);
             res.status(500).json(ex);
             return;
           }
