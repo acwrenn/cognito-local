@@ -43,6 +43,7 @@ export const createServer = (
       origin: "*",
     })
   );
+
   app.use(
     bodyParser.json({
       type: "application/x-amz-json-1.1",
@@ -52,6 +53,34 @@ export const createServer = (
   app.get("/:userPoolId/.well-known/jwks.json", (req, res) => {
     res.status(200).json({
       keys: [PublicKey.jwk],
+    });
+  });
+  app.post("/:userPoolId/oauth2/token", (req, res) => {
+    let rawBody = "";
+    req.setEncoding("utf8");
+    req.on("data", function (chunk) {
+      rawBody += chunk;
+    });
+    req.on("end", function () {
+      const target = "GetToken";
+      const route = router(target);
+      route({ logger: req.log }, rawBody).then(
+        (output) => res.status(200).type("json").send(JSON.stringify(output)),
+        (ex) => {
+          if (ex instanceof CognitoError) {
+            req.log.warn(ex, `Error handling target: ${target}`);
+            res.status(400).json({
+              code: ex.code,
+              message: ex.message,
+            });
+            return;
+          } else {
+            req.log.error(ex, `Error handling target: ${target}`);
+            res.status(500).json(ex);
+            return;
+          }
+        }
+      );
     });
   });
 
