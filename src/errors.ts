@@ -95,3 +95,9 @@ export class InvalidParameterError extends CognitoError {
     super("InvalidParameterException", message);
   }
 }
+
+export class NotImplementedError extends CognitoError {
+  public constructor() {
+    super("NotImplementedException", "Function not implemented");
+  }
+}
