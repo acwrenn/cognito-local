@@ -62,7 +62,6 @@
   },
   "dependencies": {
     "@aws-crypto/client-node": "^3.1.1",
-    "aws-lambda": "^1.0.7",
     "aws-sdk": "^2.1145.0",
     "body-parser": "^1.19.0",
     "boxen": "^5.1.2",
