@@ -68,6 +68,19 @@ export const createServer = (
     req.on("end", function () {
       const target = "GetToken";
       const route = router(target);
+      const auth = req.get("Authorization");
+      if (auth && auth.startsWith("Basic ")) {
+        const sliced = auth.slice("Basic ".length);
+        const buff = new Buffer(sliced, "base64");
+        const decoded = buff.toString("ascii");
+        const creds = decoded.split(":");
+        if (creds.length == 2) {
+          const id = creds[0];
+          const secret = creds[1];
+          rawBody += `&client_id=${id}`;
+          rawBody += `&client_secret=${secret}`;
+        }
+      }
       route({ logger: req.log }, rawBody).then(
         (output) => {
           res.status(200).type("json").send(JSON.stringify(output));
