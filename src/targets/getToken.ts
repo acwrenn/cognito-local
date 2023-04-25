@@ -13,12 +13,12 @@ type GetTokenRequest = URLSearchParams;
 
 interface GetTokenResponse {
   access_token: string;
-  refresh_token: string;
+  refresh_token: string | null;
 }
 
 export type GetTokenTarget = Target<GetTokenRequest, GetTokenResponse>;
 
-async function getRefreshToken(
+async function getWithRefreshToken(
   ctx: Context,
   services: HandleTokenServices,
   params: GetTokenRequest
@@ -51,6 +51,39 @@ async function getRefreshToken(
   };
 }
 
+async function getWithClientCredentials(
+  ctx: Context,
+  services: HandleTokenServices,
+  params: GetTokenRequest
+) {
+  const clientId = params.get("client_id");
+  const clientSecret = params.get("client_secret");
+  const userPoolClient = await services.cognito.getAppClient(ctx, clientId);
+  if (!userPoolClient) {
+    throw new NotAuthorizedError();
+  }
+  if (
+    userPoolClient.ClientSecret &&
+    userPoolClient.ClientSecret != clientSecret
+  ) {
+    throw new NotAuthorizedError();
+  }
+
+  const tokens = await services.tokenGenerator.generateWithClientCreds(
+    ctx,
+    userPoolClient
+  );
+  console.log("Tokens:", tokens);
+  if (!tokens) {
+    throw new NotAuthorizedError();
+  }
+
+  return {
+    access_token: tokens.AccessToken,
+    refresh_token: null,
+  };
+}
+
 export const GetToken =
   (services: HandleTokenServices): GetTokenTarget =>
   async (ctx, req) => {
@@ -60,10 +93,10 @@ export const GetToken =
         throw new NotImplementedError();
       }
       case "client_credentials": {
-        throw new NotImplementedError();
+        return getWithClientCredentials(ctx, services, params);
       }
       case "refresh_token": {
-        return getRefreshToken(ctx, services, params);
+        return getWithRefreshToken(ctx, services, params);
       }
       default: {
         throw new InvalidParameterError();
